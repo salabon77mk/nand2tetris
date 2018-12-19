@@ -55,7 +55,7 @@ CHIP ALU {
    Not16(in=choicey, out=negy);
    Mux16(a=choicey, b=negy, sel=ny, out=finy);
 
-   And16(a=finx, b=finy, out=andxy);
+  And16(a=finx, b=finy, out=andxy);
    Add16(a=finx, b=finy, out=sumxy);
    Mux16(a=andxy, b=sumxy, sel=f, out=output);
    Not16(in=output, out=notoutput);
