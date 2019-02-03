@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 		std::cerr << "File: " << target_file << " does not exist\n";
 		return 1;
 	}
-
-	parse(input);
+	first_pass(input);
+	printTable();
+//	parse(input);
 }
