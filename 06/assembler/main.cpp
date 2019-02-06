@@ -17,7 +17,6 @@ int main(int argc, char* argv[])
 
 	std::string target_file = argv[1];
 
-
 	std::ifstream input;
 	input.open(target_file);
 
@@ -26,7 +25,11 @@ int main(int argc, char* argv[])
 		std::cerr << "File: " << target_file << " does not exist\n";
 		return 1;
 	}
-	first_pass(input);
-	printTable();
-//	parse(input);
+	std::string delim = ".";
+	std::string outfile_name = target_file.substr(0, target_file.find(delim));
+
+//	first_pass(input);
+//	printTable();
+//	parse(input, outfile_name);
+	input.close();
 }

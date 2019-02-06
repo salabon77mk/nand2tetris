@@ -32,38 +32,34 @@ std::unordered_map<std::string, std::string> Table::c_map =
 
 std::unordered_map<std::string, std::string> Table::sym_map =
 {
-	{"R0", "000000000000000"}, {"R1","000000000000001"}, {"R2","000000000000010"}, {"R3","000000000000011"},
+	{"R0", "0000000000000000"}, {"R1","0000000000000001"}, {"R2","0000000000000010"}, {"R3","0000000000000011"},
 	// change r4 and r5 TODO
-   	{"R4", "000000000000100"}, {"R5", "000000000000101"}, {"R6", "000000000000111"}, {"R7", "000000000001000"}, 
-	{"R8", "000000000001001"}, {"R9", "000000000001010"}, {"R10", "000000000001011"}, {"R11", "000000000001100"}, 
-	{"R12", "000000000001101"}, {"R13", "000000000001110"}, {"R14", "000000000001111"}, {"R15", "000000000010000"}, 
-	{"SP", "000000000000000"}, {"LCL", "000000000000001"}, {"ARG", "000000000000010"}, {"THIS", "000000000000011"},
-   	{"THAT", "000000000000100"}, {"SCREEN", "010000000000000"}, {"KBD", "110000000000000"}
+   	{"R4", "0000000000000100"}, {"R5", "0000000000000101"}, {"R6", "0000000000000111"}, {"R7", "0000000000001000"}, 
+	{"R8", "0000000000001001"}, {"R9", "0000000000001010"}, {"R10", "0000000000001011"}, {"R11", "0000000000001100"}, 
+	{"R12", "0000000000001101"}, {"R13", "0000000000001110"}, {"R14", "0000000000001111"}, {"R15", "0000000000010000"}, 
+	{"SP", "0000000000000000"}, {"LCL", "0000000000000001"}, {"ARG", "0000000000000010"}, {"THIS", "0000000000000011"},
+   	{"THAT", "0000000000000100"}, {"SCREEN", "0010000000000000"}, {"KBD", "0110000000000000"}
 };
 
 
 std::string Table::getJBits(const std::string& key)
 {
-	auto iter = Table::j_map.find(key);
-	if(iter != Table::j_map.end())
-	{
-		return iter->second;
-	}
-	else if(iter == Table::j_map.end())
-	{
-		std::cout << "Key not found: " << key << std::endl;
-		return ""; // handle empty string in main
-	}
+	return Table::get(Table::j_map, key);
 }
 
 std::string Table::getDBits(const std::string& key)
 {
-
+	return Table::get(Table::d_map, key);
 }
 
 std::string Table::getCBits(const std::string& key)
 {
+	return Table::get(Table::c_map, key);
+}
 
+std::string Table::getSymVal(const std::string& key)
+{	
+	return Table::get(Table::sym_map, key);
 }
 
 
@@ -82,16 +78,17 @@ void Table::addLabelSym(const std::string& key, int value)
 	Table::sym_map.insert({key, val});
 }
 
-std::string Table::getSymVal(const std::string& key)
-{	
-	auto it = Table::sym_map.find(key);
-	if(it != Table::sym_map.end())
+
+std::string Table::get(const std::unordered_map<std::string,std::string>& map, const std::string& key)
+{
+	auto it = map.find(key);
+	if( it != map.end())
 	{
-		return it->second;
-	}
-	else if(it == Table::sym_map.end())
-	{
-		std::cout << "Key not found: " << key << std::endl;
-		return ""; // handle empty string in main
-	}
+	   	return it->second;
+   	}
+	else if(it == map.end())
+   	{
+	   	return "";
+   	};
 }
+

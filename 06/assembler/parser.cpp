@@ -29,35 +29,38 @@ static bool checkInlineComm(std::string& currLine, int index);
 static int extractNum(std::string& str);
 static enum Command_Type getType(std::string& str);
 
-inline void handleLabel(std::string& currLine);
-void handleVariable(std::string& currLine);
+inline void handleLabel(std::string& currLine, int instr_count);
+void handleVariable(std::ofstream& outfile, std::string& currLine);
 inline void syntaxErr(std::string& str);
+inline void invalidCommand(std::string& str);
 
-void handleVariable(std::ifstream& file, std::string& currLine)
+inline void invalidCommand(std::string& str)
+{
+	std::cout << "Your string: " << str << " is not part of the Hack assembly language";
+}
+
+void handleVariable(std::ofstream& outfile, std::string& currLine)
 {
 	std::string var = ""; // contains the variable symbol we will use
     int i = 1;
-	for( ; i < currLine.length() && std::isalnum(currLine[i]))
+	for( ; i < currLine.length() && std::isalnum(currLine[i]); ++i)
 	{
 		var += currLine[i];
 	}
 	checkSyntax(currLine, i);
 
 	std::string val = Table::getSymVal(var);
-	if(val.length() != 0)
-	{
-		// print to file
-	}
-	else if(val.length() == 0)
+
+	if(val.length() == 0)
 	{
 		Table::addVarSym(var);
 		// do a lookup again and print it to file
 		val = Table::getSymVal(var);
-		// print contents to file appended with 0
 	}
+	outfile << val << "\n";
 }
 
-inline void handleLabel(std::string& currLine)
+inline void handleLabel(std::string& currLine, int instr_count)
 {
 
 	// Make a check that the symbol is syntax good
@@ -79,23 +82,11 @@ inline void handleLabel(std::string& currLine)
 	if(right_paren)
 	{
 		checkSyntax(currLine, i);
-		labels.push_back(label);
-	    if(Table::getSymVal(label).length != 0) // symbol is not in table, add it
+		 //labels.push_back(label);
+	    if(Table::getSymVal(label).length() == 0) // symbol is not in table, add it
 		{	
 			Table::addLabelSym(label, instr_count);
 		}
-	}
-}
-
-std::vector<std::string> labels;
-void printTable()
-{
-	auto it = labels.begin();
-
-	for( ; it != labels.end(); ++it)
-	{
-		std::string sym = Table::getSymVal(*it);
-		std::cout << "Label: " << *it << "\nSym: " << sym << "\n";
 	}
 }
 
@@ -118,15 +109,16 @@ void first_pass(std::ifstream& file)
 		}
 		else if(comm_type == LABEL_SYM)
 		{
-			handleLabel(currLine);
+			handleLabel(currLine, instr_count);
 		}
 	}
 }
 
 
-void parse(std::ifstream& file)
+void parse(std::ifstream& file, std::string outfile_name)
 {
 	std::string currLine = "";
+	std::ofstream outfile(outfile_name + ".hack");
 	while(std::getline(file, currLine))
 	{
 		// Skip blank lines and comments
@@ -140,25 +132,37 @@ void parse(std::ifstream& file)
 			int num = extractNum(currLine);
 			std::string bin_rep = binToDec(num);
 			// TODO print to file bin_rep
+			outfile << bin_rep << "\n";
 		}
 		else if(comm_type == C_COMMAND)
 		{
 			// CHANGE VAR NAME
-			std::unique_ptr<C_Comm_Strings> s = parseCComm(currLine);
-			std::cout << s->dest_str << "\n" << s->comp_str << "\n" << s->jmp_str << "\n";			
+			std::string c_comm_out = "111";
+			std::unique_ptr<C_Comm_Strings> parsed_c_comm = parseCComm(currLine);
+		
+			// getting c j d bits
+			std::string c_bits = Table::getCBits(parsed_c_comm->comp_str);
+			std::string d_bits = Table::getDBits(parsed_c_comm->dest_str);
+			std::string j_bits = Table::getJBits(parsed_c_comm->jmp_str);
+
+			if(j_bits.length() == 0 || c_bits.length() == 0 || d_bits.length())
+			{
+			   	invalidCommand(currLine); 
+		   	}
+		    outfile << c_comm_out <<  c_bits << d_bits << j_bits << "\n";	
 		}
 		else if(comm_type == VARIABLE_SYM)
 		{
-
+			handleVariable(outfile, currLine);	
 		}
 	}
-
+	outfile.close();
 }
 
 inline static void nonInstrSkip(std::ifstream& file, std::string& currLine)
 {
 	skipSugar(file, currLine);
-	if(!file) {return;}
+	if(!file) { return; }
 }
 
 void skipSugar(std::ifstream& file, std::string& currLine)
@@ -290,12 +294,12 @@ std::string binToDec(int dec)
 		exit(-1);
 	}
 
-	std::string binRep = "000000000000000";
+	std::string binRep = "0000000000000000";
 
 	//check if negative
 	int currCeiling = 16384;
 
-	for(int i = 0; i < 15; i++)
+	for(int i = 1; i < binRep.length(); ++i)
 	{
 		if(dec >= currCeiling)
 		{
@@ -349,3 +353,29 @@ static std::unique_ptr<C_Comm_Strings> parseCComm(std::string& currLine)
 	checkSyntax(currLine, i);
 	return parsed_comm;
 }
+	/*
+	if(val.length() != 0)
+	{
+		outfile << val << "\n";
+	}
+	else if(val.length() == 0)
+	{
+		Table::addVarSym(var);
+		// do a lookup again and print it to file
+		val = Table::getSymVal(var);
+		outfile << val << "\n";
+	}
+	*/
+/*
+std::vector<std::string> labels;
+void printTable()
+{
+	auto it = labels.begin();
+
+	for( ; it != labels.end(); ++it)
+	{
+		std::string sym = Table::getSymVal(*it);
+		std::cout << "Label: " << *it << "\nSym: " << sym << "\n";
+	}
+}
+*/
