@@ -5,7 +5,6 @@
 #include <cctype>
 #include <memory>
 
-#include <vector>
 
 #include <iostream>
 enum Command_Type { A_COMMAND, C_COMMAND, LABEL_SYM, VARIABLE_SYM };
@@ -19,9 +18,13 @@ struct C_Comm_Strings
 
 static std::unique_ptr<C_Comm_Strings> parseCComm(std::string& currLine);
 
-inline static void nonInstrSkip(std::ifstream& file, std::string& currLine);
+static inline void nonInstrSkip(std::ifstream& file, std::string& currLine);
 static void skipSugar(std::ifstream& file, std::string& currLine);
 static bool isComment(std::string& currLine);
+static inline bool isSpaceSlash(char ch);
+static inline std::string trim(std::string& str);
+
+
 
 static void checkSyntax(std::string& currLine, int index);
 static bool checkInlineComm(std::string& currLine, int index);
@@ -29,21 +32,18 @@ static bool checkInlineComm(std::string& currLine, int index);
 static int extractNum(std::string& str);
 static enum Command_Type getType(std::string& str);
 
-inline void handleLabel(std::string& currLine, int instr_count);
-void handleVariable(std::ofstream& outfile, std::string& currLine);
-inline void syntaxErr(std::string& str);
-inline void invalidCommand(std::string& str);
+static inline void handleLabel(std::string& currLine, int instr_count);
+static void handleVariable(std::ofstream& outfile, std::string& currLine);
 
-inline void invalidCommand(std::string& str)
-{
-	std::cout << "Your string: " << str << " is not part of the Hack assembly language";
-}
+static inline void syntaxErr(std::string& str);
+static inline void invalidCommand(std::string& str);
 
-void handleVariable(std::ofstream& outfile, std::string& currLine)
+
+static void handleVariable(std::ofstream& outfile, std::string& currLine)
 {
 	std::string var = ""; // contains the variable symbol we will use
     int i = 1;
-	for( ; i < currLine.length() && std::isalnum(currLine[i]); ++i)
+	for( ; i < currLine.length() && !isSpaceSlash(currLine[i]); ++i)
 	{
 		var += currLine[i];
 	}
@@ -60,7 +60,7 @@ void handleVariable(std::ofstream& outfile, std::string& currLine)
 	outfile << val << "\n";
 }
 
-inline void handleLabel(std::string& currLine, int instr_count)
+static inline void handleLabel(std::string& currLine, int instr_count)
 {
 
 	// Make a check that the symbol is syntax good
@@ -98,6 +98,7 @@ void first_pass(std::ifstream& file)
 	while(std::getline(file, currLine))
 	{
 		nonInstrSkip(file, currLine);
+		currLine = trim(currLine);
 		enum Command_Type comm_type = getType(currLine);
 
 		// If it's any kind of instruction, we just increment instr_count
@@ -115,23 +116,24 @@ void first_pass(std::ifstream& file)
 }
 
 
-void parse(std::ifstream& file, std::string outfile_name)
+void parse(std::ifstream& file, std::string& outfile_name)
 {
 	std::string currLine = "";
 	std::ofstream outfile(outfile_name + ".hack");
+
+	file.clear(); // reset to top of file
+	file.seekg(0, std::ios::beg);
 	while(std::getline(file, currLine))
 	{
 		// Skip blank lines and comments
 		nonInstrSkip(file, currLine);
-
-		std::cout << currLine << "\n";
+		currLine = trim(currLine);
 
 		enum Command_Type comm_type = getType(currLine);
 		if(comm_type == A_COMMAND)
 		{
 			int num = extractNum(currLine);
 			std::string bin_rep = binToDec(num);
-			// TODO print to file bin_rep
 			outfile << bin_rep << "\n";
 		}
 		else if(comm_type == C_COMMAND)
@@ -145,7 +147,7 @@ void parse(std::ifstream& file, std::string outfile_name)
 			std::string d_bits = Table::getDBits(parsed_c_comm->dest_str);
 			std::string j_bits = Table::getJBits(parsed_c_comm->jmp_str);
 
-			if(j_bits.length() == 0 || c_bits.length() == 0 || d_bits.length())
+			if(j_bits.length() == 0 || c_bits.length() == 0 || d_bits.length() == 0)
 			{
 			   	invalidCommand(currLine); 
 		   	}
@@ -159,13 +161,13 @@ void parse(std::ifstream& file, std::string outfile_name)
 	outfile.close();
 }
 
-inline static void nonInstrSkip(std::ifstream& file, std::string& currLine)
+static inline void nonInstrSkip(std::ifstream& file, std::string& currLine)
 {
 	skipSugar(file, currLine);
 	if(!file) { return; }
 }
 
-void skipSugar(std::ifstream& file, std::string& currLine)
+static void skipSugar(std::ifstream& file, std::string& currLine)
 {
 	while((currLine.length() == 0 || isComment(currLine)) && file)
 	{
@@ -174,7 +176,7 @@ void skipSugar(std::ifstream& file, std::string& currLine)
 }
 
 // Only checks if a line STARTS as a comment
-bool isComment(std::string& currLine)
+static bool isComment(std::string& currLine)
 {
 	if(currLine.length() > 2)
 	{
@@ -188,28 +190,23 @@ bool isComment(std::string& currLine)
 	return false;
 }
 
-bool checkInlineComm(std::string& currLine, int index)
+// Utility function because this sequence gets used often enough
+static inline bool isSpaceSlash(char ch)
 {
-	try
-	{
-		// peak ahead to see if it's a comment
-		if(currLine[++index] == '/')
-		{
-			return true;
-		}
-		else
-		{
-			return false;	
-		}
-	}
-	catch(std::out_of_range& err)
-	{
-		syntaxErr(currLine);
-	}
+	return (ch == ' ' || ch == '/');
 }
 
+// Get rid of leading spaces and tabs
+static inline std::string trim(std::string& str)
+{
+	unsigned int i = 0;
+	for( ; i < str.length() && (str[i] == ' ' || str[i] == '\t') ; ++i){}
+	return str.substr(i, str.length());
+}
+
+
 // makes sure there's no extra junk in the line
-void checkSyntax(std::string& currLine, int index)
+static void checkSyntax(std::string& currLine, int index)
 {
 	while(index < currLine.length())
 	{
@@ -231,7 +228,27 @@ void checkSyntax(std::string& currLine, int index)
 	}
 }
 
-enum Command_Type getType(std::string& str)
+static bool checkInlineComm(std::string& currLine, int index)
+{
+	try
+	{
+		// peak ahead to see if it's a comment
+		if(currLine.at(++index) == '/')
+		{
+			return true;
+		}
+		else
+		{
+			return false;	
+		}
+	}
+	catch(std::out_of_range& err)
+	{
+		syntaxErr(currLine);
+	}
+}
+
+static enum Command_Type getType(std::string& str)
 {
 	// Each command must be at least two chars long in Hack
 	if(str.length() > 1)
@@ -242,7 +259,7 @@ enum Command_Type getType(std::string& str)
 			else if(std::isalpha(str[1])) { return VARIABLE_SYM; }
 			else { syntaxErr(str); } // Non alpha-num is syntax err
 		}
-		else if(std::isalpha(str[0]))
+		else if(std::isalnum(str[0]))
 		{
 			return C_COMMAND;
 		}	
@@ -258,7 +275,7 @@ enum Command_Type getType(std::string& str)
 
 // Once we've seen an A-command, convert it into an int
 // for further processing in binToDec
-int extractNum(std::string& str)
+static int extractNum(std::string& str)
 {
 	std::string numbers = "";
 	int i = 1;
@@ -274,10 +291,15 @@ int extractNum(std::string& str)
 	return num;
 }
 
-inline void syntaxErr(std::string& str)
+static inline void syntaxErr(std::string& str)
 {
 	std::cerr << "Line: " << str << " has a syntax error" << "\n";
 	exit(-1);
+}
+
+static inline void invalidCommand(std::string& str)
+{
+	std::cout << "Your string: " << str << " is not part of the Hack assembly language";
 }
 
 std::string binToDec(int dec)
@@ -299,6 +321,7 @@ std::string binToDec(int dec)
 	//check if negative
 	int currCeiling = 16384;
 
+	// start at index 1 because first 0 is for A-command
 	for(int i = 1; i < binRep.length(); ++i)
 	{
 		if(dec >= currCeiling)
@@ -322,7 +345,7 @@ static std::unique_ptr<C_Comm_Strings> parseCComm(std::string& currLine)
 
 	// We fill out the comp_str first, if we find an =, we reassign the contents of comp_str to dest_str	
 	int i = 0;
-	for(; i < currLine.length() && (currLine[i] != ' ' || currLine[i] != '/'); i++)
+	for(; i < currLine.length() && !isSpaceSlash(currLine[i]); ++i)
 	{
 		bool special_char = false;	// Set to true if either '=' or ';' found
 		if(currLine[i] == '=')
@@ -353,29 +376,3 @@ static std::unique_ptr<C_Comm_Strings> parseCComm(std::string& currLine)
 	checkSyntax(currLine, i);
 	return parsed_comm;
 }
-	/*
-	if(val.length() != 0)
-	{
-		outfile << val << "\n";
-	}
-	else if(val.length() == 0)
-	{
-		Table::addVarSym(var);
-		// do a lookup again and print it to file
-		val = Table::getSymVal(var);
-		outfile << val << "\n";
-	}
-	*/
-/*
-std::vector<std::string> labels;
-void printTable()
-{
-	auto it = labels.begin();
-
-	for( ; it != labels.end(); ++it)
-	{
-		std::string sym = Table::getSymVal(*it);
-		std::cout << "Label: " << *it << "\nSym: " << sym << "\n";
-	}
-}
-*/

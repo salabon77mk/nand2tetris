@@ -28,8 +28,8 @@ int main(int argc, char* argv[])
 	std::string delim = ".";
 	std::string outfile_name = target_file.substr(0, target_file.find(delim));
 
-//	first_pass(input);
+	first_pass(input);
 //	printTable();
-//	parse(input, outfile_name);
+	parse(input, outfile_name);
 	input.close();
 }
